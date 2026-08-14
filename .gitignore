@@ -1,8 +1,8 @@
-/bin/
-/obj/
-/packages/
+bin/
+obj/
+packages/
 
-.vs/TalkyTina
+.vs/
 .idea/
 
 *.user

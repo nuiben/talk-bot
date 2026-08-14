@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Firefox;
 
 namespace talk
 {
@@ -17,8 +14,7 @@ namespace talk
 
             ConsoleView view = new ConsoleView();
             PhraseLibrary model = new PhraseLibrary();
-            IWebDriver iwb = new FirefoxDriver();
-            Test testNode = new Test(iwb);
+            Test testNode = new Test();
             int userSelection;
             do
             {
@@ -38,9 +34,16 @@ namespace talk
                 }
                 else if (userSelection == 4)
                 {
-                    testNode.Initialize();
-                    testNode.ExecuteTest();
-                    testNode.ClearMemory();
+                    // finally, so a failed test still closes the browser.
+                    try
+                    {
+                        testNode.Initialize();
+                        testNode.ExecuteTest();
+                    }
+                    finally
+                    {
+                        testNode.ClearMemory();
+                    }
                 }
             }
             while (userSelection != 5);

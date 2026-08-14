@@ -1,0 +1,10 @@
+bin/
+obj/
+
+# legacy packages.config restore directory (no longer used)
+packages/
+
+.vs/
+.idea/
+
+*.user

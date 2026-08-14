@@ -2,7 +2,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- System.Speech is Windows-only; other hosts build the portable TFM
+         and use a command line synthesizer instead. -->
+    <TargetFramework Condition="'$(OS)' == 'Windows_NT'">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(OS)' != 'Windows_NT'">net10.0</TargetFramework>
     <RootNamespace>talk</RootNamespace>
     <AssemblyName>talk-bot</AssemblyName>
     <LangVersion>latest</LangVersion>
@@ -12,7 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="Selenium.WebDriver" Version="4.16.2" />
-    <PackageReference Include="System.Speech" Version="9.0.0" />
+    <PackageReference Include="System.Speech" Version="9.0.0" Condition="'$(OS)' == 'Windows_NT'" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "Bf80sVPg1PY=",
+  "success": true,
+  "projectFilePath": "/home/ben/projects/talk-bot/talk-bot/talk-bot.csproj",
+  "expectedPackageFiles": [
+    "/home/ben/.nuget/packages/newtonsoft.json/13.0.1/newtonsoft.json.13.0.1.nupkg.sha512",
+    "/home/ben/.nuget/packages/selenium.webdriver/4.16.2/selenium.webdriver.4.16.2.nupkg.sha512",
+    "/home/ben/.nuget/packages/microsoft.aspnetcore.app.ref/10.0.10/microsoft.aspnetcore.app.ref.10.0.10.nupkg.sha512"
+  ],
+  "logs": []
+}

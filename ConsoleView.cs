@@ -15,7 +15,7 @@ namespace talk
             Console.WriteLine("________Menu_________");
             Console.WriteLine("1) Add a phrase");
             Console.WriteLine("2) Remove a phrase");
-            Console.WriteLine("3) Make Tina talk");
+            Console.WriteLine("3) Make Talk Bot Talk");
             Console.WriteLine("4) Run Selenium Test");
             Console.WriteLine("5) Exit");
             Console.WriteLine("______________________");

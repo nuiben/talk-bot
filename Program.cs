@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using OpenQA.Selenium;
 
 namespace talk
 {
@@ -34,11 +35,17 @@ namespace talk
                 }
                 else if (userSelection == 4)
                 {
-                    // finally, so a failed test still closes the browser.
+                    // A browser or network problem should return to the menu,
+                    // not take down the program. finally closes the browser
+                    // either way.
                     try
                     {
                         testNode.Initialize();
                         testNode.ExecuteTest();
+                    }
+                    catch (WebDriverException e)
+                    {
+                        Console.WriteLine("Test could not run: " + e.Message);
                     }
                     finally
                     {

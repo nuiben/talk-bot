@@ -1,12 +1,8 @@
 bin/
 obj/
-
-# legacy packages.config restore directory (no longer used)
 packages/
 
-.vs/
+.vs/TalkyTina
 .idea/
 
 *.user
-
-.vs/TalkyTina

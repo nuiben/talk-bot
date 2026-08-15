@@ -176,8 +176,14 @@ namespace talk
                     "Pick from the voices this synthesizer has"));
                 items.Add(new MenuItem(2, "Speed: " + Dial(settings.Speed),
                     "-10 is slow, 0 is normal, 10 is fast"));
-                items.Add(new MenuItem(3, "Pitch: " + Dial(settings.Pitch),
-                    "-10 is low, 0 is normal, 10 is high"));
+                // A backend that cannot pitch a phrase says so on the row
+                // rather than taking a number and then ignoring it, which
+                // looked from the outside like the setting had not saved.
+                items.Add(engine.HonoursPitch
+                    ? new MenuItem(3, "Pitch: " + Dial(settings.Pitch),
+                        "-10 is low, 0 is normal, 10 is high")
+                    : new MenuItem(3, "Pitch: not on this engine",
+                        "These voices carry their own pitch, so the dial is off"));
                 items.Add(new MenuItem(4, "Volume: " + settings.Volume,
                     "0 is silent, 100 is full"));
                 items.Add(new MenuItem(5, "Preview", "Hear the settings as they stand"));
@@ -206,8 +212,16 @@ namespace talk
                 }
                 else if (chosen == 3)
                 {
-                    settings.Pitch = AskForNumber("Pitch", VoiceSettings.Lowest,
-                        VoiceSettings.Highest, settings.Pitch);
+                    if (engine.HonoursPitch)
+                    {
+                        settings.Pitch = AskForNumber("Pitch", VoiceSettings.Lowest,
+                            VoiceSettings.Highest, settings.Pitch);
+                    }
+                    else
+                    {
+                        Notice("This engine has no pitch of its own. Pick another voice"
+                            + " for a higher or lower one.", ConsoleColor.Yellow);
+                    }
                 }
                 else if (chosen == 4)
                 {

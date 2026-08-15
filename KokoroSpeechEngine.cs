@@ -261,6 +261,13 @@ namespace talk
             }
         }
 
+        // The model has no pitch input: each voice was trained with one of its
+        // own, and the only way to a higher one is a different voice.
+        public bool HonoursPitch
+        {
+            get { return false; }
+        }
+
         public string Describe()
         {
             if (failure != null)

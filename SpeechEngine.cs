@@ -31,6 +31,13 @@ namespace talk
         // language and the settings screen asks for the group first.
         string VoiceGroup(string voice);
 
+        // False when the pitch of a phrase is not this backend's to set, so
+        // the settings screen can say so on the row rather than accepting a
+        // number that goes on to change nothing. Kokoro's voices carry their
+        // own pitch, as do the macOS ones, and festival takes no options at
+        // all.
+        bool HonoursPitch { get; }
+
         // One line for the settings screen: which backend is speaking and
         // which of the dials it actually honours.
         string Describe();
@@ -339,6 +346,13 @@ namespace talk
             arguments.Add(voice.Volume.ToString());
         }
 
+        // festival is handed the text and nothing else, and the macOS voices
+        // come with a pitch of their own that `say` will not override.
+        public bool HonoursPitch
+        {
+            get { return command != "festival" && command != "say"; }
+        }
+
         public string Describe()
         {
             if (command == "festival")
@@ -498,6 +512,14 @@ namespace talk
         public string VoiceGroup(string voice)
         {
             return null;
+        }
+
+        // Nothing is spoken, so nothing is refused either: the dial is left
+        // alone rather than being called out on a screen that already says
+        // there is no synthesizer.
+        public bool HonoursPitch
+        {
+            get { return true; }
         }
 
         public string Describe()

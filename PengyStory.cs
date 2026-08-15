@@ -9,7 +9,7 @@ namespace talk
         public const string Title = "Pengy and his Fish Sticks";
 
         public const string PageUrl =
-            "https://github.com/nuiben/talk-bot/blob/main/pengy.md";
+            "https://github.com/nuiben/talk-bot/blob/main/docs/pengy.md";
 
         public static string Fetch()
         {

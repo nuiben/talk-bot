@@ -9,7 +9,7 @@ namespace talk.Tests
         private const string ExpectedText = "penguin";
 
         private const string PageUrl =
-            "https://github.com/nuiben/talk-bot/blob/main/penguin.md";
+            "https://github.com/nuiben/talk-bot/blob/main/docs/penguin.md";
 
         public string Name
         {

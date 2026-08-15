@@ -8,7 +8,7 @@ namespace talk.Tests
     internal class WebPageTest : ITest
     {
         private const string PlainTextUrl =
-            "https://raw.githubusercontent.com/nuiben/talk-bot/main/pengy.md";
+            "https://raw.githubusercontent.com/nuiben/talk-bot/main/docs/pengy.md";
 
         private const string HtmlUrl = "https://example.com";
 

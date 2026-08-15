@@ -94,6 +94,11 @@ namespace talk
             return null;
         }
 
+        public bool HonoursPitch
+        {
+            get { return true; }
+        }
+
         public string Describe()
         {
             return "Windows speech - voice, speed, pitch and volume";

@@ -89,7 +89,7 @@ Type "4"
 Sleep 500ms
 Enter
 Sleep 1s
-Type "https://github.com/nuiben/talk-bot/blob/main/pengy.md"
+Type "https://github.com/nuiben/talk-bot/blob/main/docs/pengy.md"
 Enter
 
 # Firefox takes the best part of a minute to fetch the page, which is nothing

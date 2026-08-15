@@ -249,8 +249,8 @@ namespace talk
         // Blank runs and indentation become long pauses or, with some backends,
         // nothing at all; a URL is read character by character; and a page can
         // carry lines that are not words at all, like the ascii art penguin in
-        // penguin.md or a row of table borders. All three are cleaned up here
-        // so what gets saved is what the synthesizer can actually say.
+        // docs/penguin.md or a row of table borders. All three are cleaned up
+        // here so what gets saved is what the synthesizer can actually say.
         private static string Tidy(string text)
         {
             text = text.Replace("\r\n", "\n");

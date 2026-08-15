@@ -50,6 +50,27 @@ namespace talk
 
         private const int Width = 46;
 
+        // How many rows are shown for a list of this length. A list one row too
+        // long is shown whole rather than scrolled for the sake of that row:
+        // the voice settings are seven rows, and hiding the last of them behind
+        // a scroll to save a single line helps nobody.
+        internal static int Shown(int count)
+        {
+            return count <= PageSize + 1 ? count : PageSize;
+        }
+
+        // Rows shown at once. A menu is redrawn by winding the cursor back over
+        // the lines it wrote, which only works while all of them are still on
+        // the screen: a list longer than the terminal scrolls the top of itself
+        // away, and every redraw after that lands in the wrong place and leaves
+        // a trail of half-erased menus. The voice list runs to two dozen
+        // entries, so it is shown a window at a time instead.
+        private const int PageSize = 6;
+
+        // The row the window starts at, kept between redraws so the list does
+        // not jump back to the top on every keystroke.
+        private int first;
+
         private const ConsoleColor Accent = ConsoleColor.Cyan;
 
         private readonly string title;
@@ -194,7 +215,18 @@ namespace talk
             Line(Rule(title), Accent);
             lines++;
 
-            for (int i = 0; i < items.Count; i++)
+            int shown = Shown(items.Count);
+            first = FirstVisible(selected, first, items.Count, shown);
+
+            // How many rows are out of sight is worth saying, since a list
+            // that just stops looks like the whole of it.
+            if (first > 0)
+            {
+                Line("    ^ " + first + " more above", ConsoleColor.DarkGray);
+                lines++;
+            }
+
+            for (int i = first; i < first + shown; i++)
             {
                 MenuItem item = items[i];
                 if (i == selected)
@@ -214,9 +246,45 @@ namespace talk
                 }
             }
 
+            int below = items.Count - (first + shown);
+            if (below > 0)
+            {
+                Line("    v " + below + " more below", ConsoleColor.DarkGray);
+                lines++;
+            }
+
             Line(Rule(""), Accent);
             Line("  up/down move    enter select    esc back", ConsoleColor.DarkGray);
             return lines + 2;
+        }
+
+        // Which row the window starts at. The window only moves when the
+        // highlight would leave it, so walking a long list scrolls a row at a
+        // time from either end rather than jumping about, and a short list
+        // never scrolls at all.
+        internal static int FirstVisible(int selected, int first, int count, int pageSize)
+        {
+            int shown = Math.Min(pageSize, count);
+            if (selected < first)
+            {
+                first = selected;
+            }
+            if (selected >= first + shown)
+            {
+                first = selected - shown + 1;
+            }
+
+            // Wrapping from the bottom row to the top, or a list that has had
+            // rows taken out of it, can leave the window past the end.
+            if (first > count - shown)
+            {
+                first = count - shown;
+            }
+            if (first < 0)
+            {
+                first = 0;
+            }
+            return first;
         }
 
         // Leaves one line behind saying what was picked, so the transcript

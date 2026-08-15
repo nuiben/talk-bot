@@ -46,12 +46,22 @@ namespace talk
         private IWebDriver _driver;
 
         // One page, one browser: open it, take the text, close it again.
+        //
+        // The address is checked before the browser is quieted, so a refusal
+        // is still written to a console that is listening. Everything after
+        // that belongs to Firefox, which is why the two are nested this way
+        // round: the browser is shut down, noisily, before the console comes
+        // back.
         public static string Read(string url)
         {
-            using (WebPage page = new WebPage())
+            string address = Validate(url);
+            using (Quiet quiet = new Quiet())
             {
-                page.Open(Validate(url));
-                return page.ReadText();
+                using (WebPage page = new WebPage())
+                {
+                    page.Open(address);
+                    return page.ReadText();
+                }
             }
         }
 

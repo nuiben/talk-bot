@@ -4,6 +4,10 @@
 #
 # The build is done first so the recording opens on the menu rather than on a
 # compiler, and QA is skipped because it drives a real browser for a minute.
+#
+# A GIF carries no sound, so the only ear the speech reaches is whoever is
+# making the recording, and it speaks a whole web page. The machine is muted
+# for the duration and put back afterwards.
 
 Output docs/demo.gif
 
@@ -13,6 +17,20 @@ Set Width 1100
 Set Height 760
 Set Padding 20
 Set TypingSpeed 60ms
+
+# Muting is setup rather than something to watch, so it is done off camera.
+# What the sink was set to before is remembered rather than assumed, because
+# unmuting a machine that was muted to begin with is its own small rudeness.
+# The trap puts it back even if the recording is stopped part way through,
+# which the line at the end cannot do on its own.
+Hide
+Type "PRIOR=$(pactl get-sink-mute @DEFAULT_SINK@ | awk '{print $2}')"
+Enter
+Type "trap 'pactl set-sink-mute @DEFAULT_SINK@ ${PRIOR:-0}' EXIT"
+Enter
+Type "pactl set-sink-mute @DEFAULT_SINK@ 1 && clear"
+Enter
+Show
 
 Type "dotnet run --no-build -- --noqa"
 Enter
@@ -36,12 +54,12 @@ Sleep 1500ms
 Enter
 Sleep 2s
 
-# Slow it down and raise the pitch.
+# Wind it up to the top of the dial and raise the pitch.
 Type "2"
 Sleep 500ms
 Enter
 Sleep 1s
-Type "-4"
+Type "10"
 Enter
 Sleep 1500ms
 
@@ -60,7 +78,7 @@ Sleep 1500ms
 Type "5"
 Sleep 500ms
 Enter
-Sleep 8s
+Sleep 3s
 Right
 Sleep 1s
 
@@ -95,6 +113,18 @@ Sleep 40s
 Show
 Sleep 5s
 
-# Escape closes Talk Bot.
+# Escape closes Talk Bot. Only once it has is there a shell to type at again:
+# anything typed before this point goes to the menu, where a line of shell is
+# a stream of keystrokes and the enter after it picks whatever row is
+# highlighted.
 Escape
 Sleep 3s
+
+# The sound comes back the way it was found. The trap would do this anyway
+# when the shell closes; this is the same thing said out loud, for the case
+# where the shell is killed rather than closed.
+Hide
+Type "pactl set-sink-mute @DEFAULT_SINK@ ${PRIOR:-0}"
+Enter
+Sleep 500ms
+Show

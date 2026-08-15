@@ -34,10 +34,20 @@ namespace talk
             return choice == Menu.Cancelled ? Exit : choice;
         }
 
+        // Null when nothing was typed, which is both an empty line and the end
+        // of a piped input. A phrase of nothing is silence with an ID, and it
+        // used to be saved and offered in the list like any other, so it is
+        // turned away at the prompt instead.
         public Phrase NewPhrase()
         {
             Console.WriteLine("What phrase would you like to add?");
             string phraseName = Console.ReadLine();
+            if (phraseName == null || phraseName.Trim().Length == 0)
+            {
+                Notice("Nothing typed, so nothing was added.", ConsoleColor.Yellow);
+                return null;
+            }
+
             phraseID = phraseID + 1;
             Phrase toBeAdded = new Phrase(phraseID, phraseName);
             return toBeAdded;
@@ -100,9 +110,14 @@ namespace talk
         // Breaks on spaces so a paragraph arriving as one long line still reads
         // as a paragraph. A word longer than the width is left to the terminal,
         // which is rare enough not to be worth cutting a word in half over.
-        private static List<string> Wrap(string text, int width)
+        internal static List<string> Wrap(string text, int width)
         {
             List<string> lines = new List<string>();
+            if (text == null)
+            {
+                return lines;
+            }
+
             foreach (string paragraph in text.Replace("\r\n", "\n").Split('\n'))
             {
                 string line = "";
@@ -222,7 +237,7 @@ namespace talk
 
         // Anything that is not a number leaves the setting where it was, which
         // is what pressing enter on an empty line does too.
-        private static int AskForNumber(string label, int low, int high, int current)
+        internal static int AskForNumber(string label, int low, int high, int current)
         {
             Console.Write(label + " (" + low + " to " + high + ", now " + current + "): ");
             string entered = Console.ReadLine();

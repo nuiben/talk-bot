@@ -237,7 +237,7 @@ namespace talk
             return new string('=', left) + label + new string('=', Width - left - label.Length);
         }
 
-        private int ChooseByTyping()
+        internal int ChooseByTyping()
         {
             Line(Rule(title), Accent);
             foreach (MenuItem item in items)

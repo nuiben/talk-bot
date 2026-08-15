@@ -155,17 +155,13 @@ namespace talk
 
         public void Speak(string phrase)
         {
+            string spoken = phrase == null ? "" : phrase;
             ProcessStartInfo info = new ProcessStartInfo(command);
-            if (command == "festival")
+            foreach (string argument in Arguments(command, spoken, VoiceSettings.Current))
             {
-                info.ArgumentList.Add("--tts");
-                info.RedirectStandardInput = true;
+                info.ArgumentList.Add(argument);
             }
-            else
-            {
-                AddVoiceArguments(info, VoiceSettings.Current);
-                info.ArgumentList.Add(phrase);
-            }
+            info.RedirectStandardInput = command == "festival";
 
             using (Process p = Process.Start(info))
             {
@@ -174,7 +170,7 @@ namespace talk
                 {
                     if (info.RedirectStandardInput)
                     {
-                        p.StandardInput.Write(phrase);
+                        p.StandardInput.Write(spoken);
                         p.StandardInput.Close();
                     }
                     SpeechInterrupt.WaitFor(delegate { return p.HasExited; }, Stop);
@@ -211,43 +207,70 @@ namespace talk
             }
         }
 
+        // The whole command line for one phrase, kept as a function of its
+        // inputs so a test can read it without a synthesizer being installed.
+        //
+        // The phrase goes last, behind "--", because a phrase can begin with a
+        // dash: "-v is the voice flag" typed as a phrase was read as options by
+        // every one of these commands, which then spoke nothing at all. Every
+        // backend here parses with getopt, so every one of them stops reading
+        // options at "--".
+        public static List<string> Arguments(string command, string phrase,
+            VoiceSettings voice)
+        {
+            List<string> arguments = new List<string>();
+            if (command == "festival")
+            {
+                // festival takes the phrase on its standard input rather than
+                // as an argument, and has no dials to set.
+                arguments.Add("--tts");
+                return arguments;
+            }
+
+            AddVoiceArguments(command, arguments, voice);
+            arguments.Add("--");
+            arguments.Add(phrase == null ? "" : phrase);
+            return arguments;
+        }
+
         // Each synthesizer names and scales its dials differently, so the
         // settings are translated here rather than being stored in any one
         // backend's units.
-        private static void AddVoiceArguments(ProcessStartInfo info, VoiceSettings voice)
+        private static void AddVoiceArguments(string command, List<string> arguments,
+            VoiceSettings voice)
         {
-            if (info.FileName == "say")
+            if (command == "say")
             {
                 // Speed is the only dial the macOS voices take on the command
                 // line; pitch and volume belong to the voice itself there.
                 if (voice.Voice != null)
                 {
-                    info.ArgumentList.Add("-v");
-                    info.ArgumentList.Add(voice.Voice);
+                    arguments.Add("-v");
+                    arguments.Add(voice.Voice);
                 }
-                info.ArgumentList.Add("-r");
-                info.ArgumentList.Add(VoiceSettings.Scale(voice.Speed, 90, 175, 350).ToString());
+                arguments.Add("-r");
+                arguments.Add(VoiceSettings.Scale(voice.Speed, 90, 175, 350).ToString());
                 return;
             }
 
-            if (info.FileName == "spd-say")
+            if (command == "spd-say")
             {
                 // speech-dispatcher takes a voice type rather than a name, and
                 // every dial on a -100..100 scale centred on its normal.
                 if (voice.Voice != null)
                 {
-                    info.ArgumentList.Add("-t");
-                    info.ArgumentList.Add(voice.Voice);
+                    arguments.Add("-t");
+                    arguments.Add(voice.Voice);
                 }
-                info.ArgumentList.Add("-r");
-                info.ArgumentList.Add((voice.Speed * 10).ToString());
-                info.ArgumentList.Add("-p");
-                info.ArgumentList.Add((voice.Pitch * 10).ToString());
-                info.ArgumentList.Add("-i");
-                info.ArgumentList.Add((voice.Volume * 2 - 100).ToString());
+                arguments.Add("-r");
+                arguments.Add((voice.Speed * 10).ToString());
+                arguments.Add("-p");
+                arguments.Add((voice.Pitch * 10).ToString());
+                arguments.Add("-i");
+                arguments.Add((voice.Volume * 2 - 100).ToString());
                 // Without this spd-say returns as soon as the phrase has been
                 // handed to the daemon, which would end the phrase instantly.
-                info.ArgumentList.Add("-w");
+                arguments.Add("-w");
                 return;
             }
 
@@ -255,15 +278,15 @@ namespace talk
             // an amplitude whose default is 100.
             if (voice.Voice != null)
             {
-                info.ArgumentList.Add("-v");
-                info.ArgumentList.Add(voice.Voice);
+                arguments.Add("-v");
+                arguments.Add(voice.Voice);
             }
-            info.ArgumentList.Add("-s");
-            info.ArgumentList.Add(VoiceSettings.Scale(voice.Speed, 80, 175, 450).ToString());
-            info.ArgumentList.Add("-p");
-            info.ArgumentList.Add(VoiceSettings.Scale(voice.Pitch, 0, 50, 99).ToString());
-            info.ArgumentList.Add("-a");
-            info.ArgumentList.Add(voice.Volume.ToString());
+            arguments.Add("-s");
+            arguments.Add(VoiceSettings.Scale(voice.Speed, 80, 175, 450).ToString());
+            arguments.Add("-p");
+            arguments.Add(VoiceSettings.Scale(voice.Pitch, 0, 50, 99).ToString());
+            arguments.Add("-a");
+            arguments.Add(voice.Volume.ToString());
         }
 
         public string Describe()

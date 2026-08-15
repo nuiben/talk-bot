@@ -18,8 +18,14 @@ namespace talk
           
         }
 
+        // A null is ignored rather than stored, because everything that walks
+        // the list asks each phrase for its ID and its text.
         public void AddPhrase(Phrase p)
         {
+            if (p == null)
+            {
+                return;
+            }
             phrases.Add(p);
         }
 

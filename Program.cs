@@ -14,10 +14,14 @@ namespace talk
         static int Main(string[] args)
         {
             // --test runs the suite and nothing else, for a build or a CI job
-            // that only wants the exit code.
+            // that only wants the exit code. --quick leaves out the page tests,
+            // which are the browser and the network and so all of the minute
+            // the suite takes; what is left is the input handling, which is
+            // worth running on every change.
+            bool quick = HasFlag(args, "--quick");
             if (HasFlag(args, "--test"))
             {
-                return TestSuite.Run();
+                return TestSuite.Run(!quick);
             }
 
             // Otherwise QA runs on the way to the menu, so a fresh build is
@@ -27,7 +31,7 @@ namespace talk
             if (!HasFlag(args, "--noqa"))
             {
                 ConsoleView.Notice("Running QA - pass --noqa to skip.", ConsoleColor.DarkGray);
-                if (TestSuite.Run() != 0)
+                if (TestSuite.Run(!quick) != 0)
                 {
                     // A failing page check says nothing about whether the menu
                     // works, so it is reported and stepped past rather than
@@ -45,7 +49,13 @@ namespace talk
                 userSelection = view.ShowMenu();
                 if (userSelection == 1)
                 {
-                    model.AddPhrase(view.NewPhrase());
+                    // Null when the user typed nothing, which the view has
+                    // already said so on screen.
+                    Phrase typed = view.NewPhrase();
+                    if (typed != null)
+                    {
+                        model.AddPhrase(typed);
+                    }
                 }
                 else if (userSelection == 2)
                 {

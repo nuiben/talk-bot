@@ -7,7 +7,7 @@ Customizable Speech Parameters: Allows users to adjust various speech parameters
 ![Talk Bot demo](docs/demo.gif)
 
 ## Voice settings
-"Voice settings" on the main menu picks the voice and sets speed, pitch and
+`Voice settings` on the main menu picks the voice and sets speed, pitch and
 volume. Speed and pitch are dials from -10 to 10 with 0 as normal, and volume
 runs from 0 to 100, so the same settings mean roughly the same thing whichever
 synthesizer is speaking; each backend converts them to its own units. Preview
@@ -27,14 +27,37 @@ has finished or been stopped with a key.
 
 ## Running
 ```
-dotnet run              # runs QA, then opens the menu
-dotnet run -- --noqa    # skips QA and goes straight to the menu
-dotnet run -- --test    # runs QA only; exit code 0 passed, 1 failed
+dotnet run                    # runs QA, then opens the menu
+dotnet run -- --noqa          # skips QA and goes straight to the menu
+dotnet run -- --test          # runs QA only; exit code 0 passed, 1 failed
+dotnet run -- --test --quick  # the same without the page tests, in a second
 ```
-QA drives a real Firefox against real pages, so it takes about a minute and
-needs the network. It reports failures and carries on to the menu rather than
-holding the program shut, since a page check says nothing about whether the
-menu works.
+QA is in two halves. The input tests run first and need nothing installed: they
+check what the program does with what it is typed, so they finish in about a
+second and are the ones worth running on every change. The page tests then
+drive a real Firefox against real pages, which is where the minute and the
+network go, and `--quick` leaves them out.
+
+QA reports failures and carries on to the menu rather than holding the program
+shut, since a page check says nothing about whether the menu works.
+
+## Handling what gets typed
+The input tests in `tests/` cover the answers that are easy to give by
+accident, and each one was written against a case the program used to get
+wrong:
+
+- a phrase beginning with a dash, which every synthesizer here read as options
+  and spoke as nothing at all - the phrase now goes behind `--`
+- nothing typed at the phrase prompt, which used to be saved as a phrase of
+  silence, and at the end of a piped input, which arrives as no line at all
+- a stray keystroke at the URL prompt: `7` cost a minute of Firefox failing to
+  reach `https://7`, and is now turned back before a browser starts
+- `javascript:`, `file:`, `data:` and `about:` addresses, which a browser will
+  open but a reader should not
+- `localhost:8080`, whose colon was read as a scheme rather than a port
+- numbers past either end of a dial, decimals, words and lines of punctuation,
+  none of which may move a setting or end the program
+- a menu answer that is not on the menu, which asks again rather than guessing
 
 ## Demo
 The GIF above is recorded from the real program with

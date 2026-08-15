@@ -33,10 +33,17 @@ namespace talk
         private int pitch;
         private int volume = 100;
 
+        // A name of nothing but spaces would be handed to the synthesizer as a
+        // voice it does not have, which fails quietly, so it is treated the
+        // same as not choosing a voice at all.
         public string Voice
         {
             get { return voice; }
-            set { voice = string.IsNullOrEmpty(value) ? null : value; }
+            set
+            {
+                string trimmed = value == null ? "" : value.Trim();
+                voice = trimmed.Length == 0 ? null : trimmed;
+            }
         }
 
         public int Speed

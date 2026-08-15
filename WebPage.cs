@@ -50,21 +50,113 @@ namespace talk
         {
             using (WebPage page = new WebPage())
             {
-                page.Open(Normalize(url));
+                page.Open(Validate(url));
                 return page.ReadText();
             }
         }
 
         // People type "example.com". Firefox would search for that rather than
         // visit it, so a missing scheme is filled in.
+        // A colon is a scheme in "https://x" and a port in "localhost:8080",
+        // and the two are told apart by what follows it: a port is digits, a
+        // scheme is not. Without that, a host and port was read as a scheme of
+        // its own and turned away as something other than a web address.
+        private const string SchemePattern = @"^[a-zA-Z][a-zA-Z0-9+.-]*:(?![0-9])";
+
         public static string Normalize(string url)
         {
             string trimmed = url == null ? "" : url.Trim();
-            if (trimmed.Length > 0 && !Regex.IsMatch(trimmed, @"^[a-zA-Z][a-zA-Z0-9+.-]*:"))
+            if (trimmed.Length > 0 && !Regex.IsMatch(trimmed, SchemePattern))
             {
                 return "https://" + trimmed;
             }
             return trimmed;
+        }
+
+        // Checked before a browser is started, because starting one takes the
+        // best part of a minute and the answer to "" or "javascript:alert(1)"
+        // is known without it. Anything other than a web address is refused
+        // rather than opened: a file: or data: URL is not a page the user has
+        // pointed the bot at so much as one they have handed it, and
+        // javascript: would run in the browser rather than being read.
+        public static string Validate(string url)
+        {
+            string normalized = Normalize(url);
+            if (normalized.Length == 0)
+            {
+                throw new PageNotReadableException("no address was given");
+            }
+
+            Uri parsed;
+            if (!Uri.TryCreate(normalized, UriKind.Absolute, out parsed))
+            {
+                throw new PageNotReadableException(
+                    "\"" + normalized + "\" is not an address a browser can open");
+            }
+
+            if (parsed.Scheme != Uri.UriSchemeHttp && parsed.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new PageNotReadableException(
+                    parsed.Scheme + ": addresses are not read, only http and https");
+            }
+
+            // A host with no dot in it is a typed mistake far more often than
+            // it is a machine on the network - a stray keystroke at the prompt
+            // becomes https://7 - so it is turned back here rather than being
+            // handed to a browser that will take a minute to fail. A name that
+            // really has no dot can still be reached by its own address.
+            //
+            // The host is taken from what was typed rather than from the parsed
+            // address, because a host of digits is a number to a parser: it
+            // reads "7" as the address 0.0.0.7, dots and all, and the check
+            // would pass the very thing it is here to catch.
+            string host = Host(normalized);
+            if (host.IndexOf('.') < 0 && host != "localhost"
+                && !host.StartsWith("[", StringComparison.Ordinal))
+            {
+                throw new PageNotReadableException(
+                    "\"" + host + "\" does not look like a web address");
+            }
+            return normalized;
+        }
+
+        // The host as it was typed: what is left of the address once the
+        // scheme, any sign-in, the port and the path have been taken off.
+        private static string Host(string url)
+        {
+            string rest = url;
+            int scheme = rest.IndexOf("://", StringComparison.Ordinal);
+            if (scheme >= 0)
+            {
+                rest = rest.Substring(scheme + 3);
+            }
+
+            int end = rest.IndexOfAny(new char[] { '/', '?', '#' });
+            if (end >= 0)
+            {
+                rest = rest.Substring(0, end);
+            }
+
+            int signIn = rest.LastIndexOf('@');
+            if (signIn >= 0)
+            {
+                rest = rest.Substring(signIn + 1);
+            }
+
+            // An IPv6 address is written in brackets and is full of colons, so
+            // the port is only what follows the closing bracket.
+            if (rest.StartsWith("[", StringComparison.Ordinal))
+            {
+                int close = rest.IndexOf(']');
+                return close < 0 ? rest : rest.Substring(0, close + 1);
+            }
+
+            int port = rest.LastIndexOf(':');
+            if (port >= 0)
+            {
+                rest = rest.Substring(0, port);
+            }
+            return rest.ToLowerInvariant();
         }
 
         public void Open(string url)

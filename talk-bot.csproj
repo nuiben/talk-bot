@@ -11,9 +11,12 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
+    <!-- KokoroAudioPlayer hands OpenAL a pointer to the phrase's samples. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="KokoroSharp.CPU" Version="0.8.4" />
     <PackageReference Include="Selenium.WebDriver" Version="4.16.2" />
     <PackageReference Include="System.Speech" Version="9.0.0" Condition="'$(OS)' == 'Windows_NT'" />
   </ItemGroup>

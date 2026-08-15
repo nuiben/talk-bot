@@ -44,6 +44,36 @@ types on speech-dispatcher. Backends that cannot do a dial say so on the
 settings screen - festival takes no options, and the macOS voices carry their
 own pitch and volume.
 
+## Kokoro voices
+`Engine` on the voice settings screen chooses between the synthesizer this
+machine already has and [Kokoro](https://github.com/hexgrad/kokoro), an
+82M-parameter neural model that runs here in the process through
+[KokoroSharp](https://github.com/Lyrcaxis/KokoroSharp) rather than being shelled
+out to. It sounds a great deal better than espeak and takes a good deal longer
+to start.
+
+The 157 voices ship with the package, so the list can be walked before anything
+has been downloaded. The model cannot: it is about 320MB and is fetched on the
+first phrase Kokoro is asked to say, not when the engine is picked, so choosing
+it to see what is there costs nothing. It is kept in the user's own data folder
+(`~/.local/share/talk-bot` and the equivalent elsewhere) rather than next to the
+executable, so it survives a clean build and is fetched once per machine instead
+of once per folder the bot is run from. A download that is interrupted leaves
+nothing behind to be mistaken for a whole model.
+
+157 voices is far more than a menu can hold, so they are grouped by language and
+gender and the group is asked for first. English comes first and Mandarin last,
+which is where the v1.1-zh release's hundred numbered voices live.
+
+Kokoro takes a voice, a speed and a volume. It has no pitch of its own - the
+voices carry their own - so the pitch dial does nothing there, which the
+settings screen says. Speed is a multiplier rather than words a minute, and the
+same -10 to 10 dial is scaled onto it between half and double pace.
+
+On Linux the audio goes through OpenAL, which is not part of the package:
+`sudo pacman -S openal`, or your distribution's equivalent. Without it Kokoro
+says so and reads nothing rather than taking the menu down with it.
+
 ## Reading a page
 Text fetched from a URL is printed to the console before it is read, so the
 page can be seen as well as heard, and is still on the screen once the speech

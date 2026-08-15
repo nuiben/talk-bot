@@ -24,6 +24,7 @@ namespace talk.Tests
             List<ITest> tests = new List<ITest>();
             tests.Add(new VoiceSettingsTest());
             tests.Add(new SpeechArgumentTest());
+            tests.Add(new KokoroVoiceTest());
             tests.Add(new PhraseLibraryTest());
             tests.Add(new UrlInputTest());
             tests.Add(new ConsoleInputTest());

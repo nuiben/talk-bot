@@ -3,6 +3,63 @@ using System.Collections.Generic;
 
 namespace talk
 {
+    // A setting the left and right arrows change where it stands, rather than
+    // one that opens a menu of its own to be changed. The value is read back on
+    // every draw instead of being handed over once, because turning the dial is
+    // what changed it: the row has to show what it now says.
+    //
+    // Available is false for a dial this backend has nothing to turn - the
+    // pitch on an engine that does not honour it - which is drawn without the
+    // arrows around it, since a row offering a change it cannot make is worse
+    // than one that says so.
+    internal class MenuDial
+    {
+        private readonly Func<string> read;
+        private readonly Func<string> describe;
+        private readonly Action<int> turn;
+        private readonly Func<bool> available;
+
+        public MenuDial(Func<string> newRead, Func<string> newDescribe, Action<int> newTurn)
+            : this(newRead, newDescribe, newTurn, null)
+        {
+        }
+
+        public MenuDial(Func<string> newRead, Func<string> newDescribe, Action<int> newTurn,
+            Func<bool> newAvailable)
+        {
+            read = newRead;
+            describe = newDescribe;
+            turn = newTurn;
+            available = newAvailable;
+        }
+
+        public bool Available
+        {
+            get { return available == null || available(); }
+        }
+
+        public string Value
+        {
+            get { return read(); }
+        }
+
+        public string Detail
+        {
+            get { return describe == null ? "" : describe(); }
+        }
+
+        // Left is -1 and right is 1. A dial that is not available is not turned
+        // rather than being left out of the list, so the row keeps its place on
+        // the screen and the arrows simply do nothing on it.
+        public void Turn(int direction)
+        {
+            if (Available)
+            {
+                turn(direction);
+            }
+        }
+    }
+
     // One row of a Menu. Value is what the caller gets back when the row is
     // chosen, so it can be a menu number or a phrase ID. Detail is the line the
     // row opens to show while it is highlighted, and may be empty.
@@ -11,12 +68,21 @@ namespace talk
         private readonly int value;
         private readonly string label;
         private readonly string detail;
+        private readonly MenuDial dial;
 
         public MenuItem(int newValue, string newLabel, string newDetail)
+            : this(newValue, newLabel, newDetail, null)
+        {
+        }
+
+        // A row with a dial on it reads as "Name: < value >", the label being
+        // the name of the setting rather than the whole of what is drawn.
+        public MenuItem(int newValue, string newLabel, string newDetail, MenuDial newDial)
         {
             value = newValue;
             label = newLabel;
             detail = newDetail == null ? "" : newDetail;
+            dial = newDial;
         }
 
         public int Value
@@ -26,12 +92,41 @@ namespace talk
 
         public string Label
         {
-            get { return label; }
+            get
+            {
+                if (dial == null)
+                {
+                    return label;
+                }
+                return dial.Available
+                    ? label + ": < " + dial.Value + " >"
+                    : label + ": " + dial.Value;
+            }
         }
 
+        // A dial says what it is worth where it stands, so it describes itself
+        // as well; the static detail is what a row without one has to say.
         public string Detail
         {
-            get { return detail; }
+            get
+            {
+                if (dial == null)
+                {
+                    return detail;
+                }
+                string described = dial.Detail;
+                return described.Length == 0 ? detail : described;
+            }
+        }
+
+        public MenuDial Dial
+        {
+            get { return dial; }
+        }
+
+        public bool Turnable
+        {
+            get { return dial != null && dial.Available; }
         }
     }
 
@@ -201,6 +296,20 @@ namespace talk
                 {
                     selected = (selected + 1) % items.Count;
                 }
+                else if (key.Key == ConsoleKey.LeftArrow ||
+                    (key.KeyChar == 'h' && items[selected].Turnable))
+                {
+                    // A dial is turned where it stands: the frame is drawn
+                    // again over itself at the top of the loop and the row
+                    // shows what it now says, without the screen having been
+                    // left and come back to.
+                    Turn(-1);
+                }
+                else if (key.Key == ConsoleKey.RightArrow ||
+                    (key.KeyChar == 'l' && items[selected].Turnable))
+                {
+                    Turn(1);
+                }
                 else if (key.Key == ConsoleKey.Home || key.Key == ConsoleKey.PageUp)
                 {
                     selected = 0;
@@ -258,6 +367,16 @@ namespace talk
             }
         }
 
+        // Nothing happens on a row that has no dial, which is most of them: the
+        // arrows are for the rows that say they take them.
+        private void Turn(int direction)
+        {
+            if (items[selected].Dial != null)
+            {
+                items[selected].Dial.Turn(direction);
+            }
+        }
+
         // Draws the frame over the one already on the screen, winding the
         // cursor back over the given number of lines to find it, and returns
         // the number of lines written so the next draw can do the same.
@@ -298,7 +417,13 @@ namespace talk
             Fill(Rule(items.Count > shown
                 ? (selected + 1) + " of " + items.Count
                 : ""), Accent);
-            Fill("  up/down move    enter select    esc back", ConsoleColor.DarkGray);
+
+            // The hints follow the highlight, because which keys do anything
+            // depends on the row it is on: the arrows are only worth offering
+            // where there is a dial to turn.
+            Fill(items[selected].Turnable
+                ? "  left/right change   enter open   esc back"
+                : "  up/down move    enter select    esc back", ConsoleColor.DarkGray);
             return shown + Furniture;
         }
 

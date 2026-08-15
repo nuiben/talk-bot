@@ -45,9 +45,10 @@ settings screen - festival takes no options, and the macOS voices carry their
 own pitch and volume.
 
 ## Reading a page
-Text fetched from a URL is printed to the console before it is read, so the
-page can be seen as well as heard, and is still on the screen once the speech
-has finished or been stopped with a key.
+A page is saved as a phrase rather than read on the spot: a long one otherwise
+started speaking the moment it was added, whether or not that was wanted. The
+fetched text is printed to the console so the page can be seen, and it is read
+aloud from Say a phrase like anything else in the list.
 
 ## Running
 ```

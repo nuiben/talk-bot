@@ -18,8 +18,6 @@ namespace talk
 
         private const string PengyWord = "pengy";
 
-        int phraseID = 0;
-
         // Built once rather than per pass, so the highlight stays on the entry
         // the user last ran instead of jumping back to the top each time.
         private readonly Menu mainMenu = MainMenu();
@@ -34,7 +32,7 @@ namespace talk
                 new MenuItem(1, "Add a phrase", "Type something for Talk Bot to say"),
                 new MenuItem(2, "Remove a phrase", "Take a phrase back out of the list"),
                 new MenuItem(3, "Say a phrase", "Talk-bot reads a saved phrase aloud"),
-                new MenuItem(4, "Add a web page", "Paste a URL to add to phrases"),
+                new MenuItem(4, "Add a web page", "Paste a URL to save its text as a phrase"),
                 new MenuItem(5, "Voice settings",
                     "Pick a voice and set speed, pitch and volume"),
                 new MenuItem(Exit, "Exit", "Close Talk Bot")
@@ -56,7 +54,7 @@ namespace talk
         // of a piped input. A phrase of nothing is silence with an ID, and it
         // used to be saved and offered in the list like any other, so it is
         // turned away at the prompt instead.
-        public Phrase NewPhrase()
+        public Phrase NewPhrase(int phraseID)
         {
             Console.WriteLine("What phrase would you like to add?");
             string phraseName = Console.ReadLine();
@@ -66,16 +64,14 @@ namespace talk
                 return null;
             }
 
-            phraseID = phraseID + 1;
             Phrase toBeAdded = new Phrase(phraseID, phraseName);
             return toBeAdded;
         }
 
         // Text pulled off a page arrives from the web rather than the keyboard,
         // but it takes the next ID in the same sequence as a typed phrase.
-        public Phrase FetchedPhrase(string text)
+        public Phrase FetchedPhrase(int phraseID, string text)
         {
-            phraseID = phraseID + 1;
             return new Phrase(phraseID, text);
         }
 
@@ -108,9 +104,9 @@ namespace talk
             return new Menu(title, items).Choose();
         }
 
-        // A page can run to thousands of characters, so it is shown before it
-        // is read rather than only being heard: the user can see what arrived,
-        // and still has it on the screen after the speech has been stopped.
+        // A page can run to thousands of characters, so what was fetched is put
+        // on the screen: the user can see what arrived, and decide whether it
+        // is worth hearing, before picking it from Say a phrase.
         public void ShowText(string title, string text)
         {
             Console.WriteLine();
@@ -154,44 +150,88 @@ namespace talk
         }
 
         // Voice, speed, pitch and volume, on one screen that shows what each is
-        // set to now. The menu is rebuilt every pass because the labels carry
-        // the current values, and it stays open until the user backs out, so
-        // several dials can be tried against the preview without coming back
-        // through the main menu each time.
+        // set to now. Every setting on it is a dial the left and right arrows
+        // turn where it stands: a voice used to be two menus deep, which is a
+        // long way to go to hear the next one along, and the numbers used to be
+        // typed at a prompt that took the screen down with it.
+        //
+        // Enter still opens what the row used to open - the full list of
+        // voices, or a prompt to type a number straight in - because a hundred
+        // and fifty voices is further than anyone wants to walk with an arrow
+        // key, and it is the only thing that works when the console is
+        // redirected and there are no arrows to press.
+        //
+        // The menu is rebuilt after anything that opens, because the engine row
+        // can change which backend this screen is setting up and so which
+        // voices and which dials it has. Turning a dial rebuilds nothing: the
+        // row reads its own value back on every draw.
         public void ConfigureVoice()
         {
             VoiceSettings settings = VoiceSettings.Current;
             Notice(SpeechEngine.Current.Describe(), ConsoleColor.DarkGray);
 
+            // Which row the user was on, kept across rebuilds so that opening a
+            // voice list and coming back does not drop the highlight at the top
+            // of the screen.
+            int row = 0;
+
             while (true)
             {
-                // Read every pass rather than once, because the engine row can
-                // change which backend this screen is now setting up.
                 ISpeechEngine engine = SpeechEngine.Current;
+                VoiceCycle cycle = new VoiceCycle(settings, engine);
 
                 List<MenuItem> items = new List<MenuItem>();
                 items.Add(new MenuItem(8, "Engine: " + SpeechEngine.Selected,
                     "The system synthesizer, or Kokoro's neural voices"));
-                items.Add(new MenuItem(1, "Voice: " + settings.VoiceName,
-                    "Pick from the voices this synthesizer has"));
-                items.Add(new MenuItem(2, "Speed: " + Dial(settings.Speed),
-                    "-10 is slow, 0 is normal, 10 is fast"));
+
+                // The language row is only there for a backend with more
+                // languages than one. Kokoro has nine and a hundred and fifty
+                // voices behind them, which is what the row is for; espeak's
+                // English voices are one list and do not need it.
+                if (cycle.HasLanguages)
+                {
+                    items.Add(new MenuItem(9, "Language", "",
+                        new MenuDial(cycle.LanguageName, cycle.DescribeLanguage,
+                            cycle.TurnLanguage)));
+                }
+                items.Add(new MenuItem(1, "Voice", "",
+                    new MenuDial(cycle.VoiceName, cycle.DescribeVoice, cycle.TurnVoice,
+                        cycle.HasVoices)));
+                items.Add(new MenuItem(2, "Speed", "",
+                    new MenuDial(
+                        () => Dial(settings.Speed),
+                        () => "-10 is slow, 0 is normal, 10 is fast",
+                        step => settings.Speed = settings.Speed + step)));
                 // A backend that cannot pitch a phrase says so on the row
                 // rather than taking a number and then ignoring it, which
-                // looked from the outside like the setting had not saved.
-                items.Add(engine.HonoursPitch
-                    ? new MenuItem(3, "Pitch: " + Dial(settings.Pitch),
-                        "-10 is low, 0 is normal, 10 is high")
-                    : new MenuItem(3, "Pitch: not on this engine",
-                        "These voices carry their own pitch, so the dial is off"));
-                items.Add(new MenuItem(4, "Volume: " + settings.Volume,
-                    "0 is silent, 100 is full"));
+                // looked from the outside like the setting had not saved. The
+                // row keeps its place either way, without the arrows around it.
+                items.Add(new MenuItem(3, "Pitch", "",
+                    new MenuDial(
+                        () => engine.HonoursPitch ? Dial(settings.Pitch) : "not on this engine",
+                        () => engine.HonoursPitch
+                            ? "-10 is low, 0 is normal, 10 is high"
+                            : "These voices carry their own pitch, so the dial is off",
+                        step => settings.Pitch = settings.Pitch + step,
+                        () => engine.HonoursPitch)));
+                // Volume runs 0 to 100 rather than -10 to 10, so it steps by
+                // five: a hundred presses to cross a dial is not an arrow key's
+                // job, and enter still takes an exact number.
+                items.Add(new MenuItem(4, "Volume", "",
+                    new MenuDial(
+                        () => settings.Volume.ToString(),
+                        () => "0 is silent, 100 is full - steps of 5",
+                        step => settings.Volume = settings.Volume + step * VolumeStep)));
                 items.Add(new MenuItem(5, "Preview", "Hear the settings as they stand"));
                 items.Add(new MenuItem(6, "Reset", "Back to the voice this bot started with"));
                 items.Add(new MenuItem(7, "Back", "Return to the main menu"));
 
                 Console.WriteLine();
-                int chosen = new Menu("VOICE SETTINGS", items).Choose();
+                Menu menu = new Menu("VOICE SETTINGS", items);
+                menu.Selected = row;
+                int chosen = menu.Choose();
+                row = menu.Selected;
+
                 if (chosen == Menu.Cancelled || chosen == 7)
                 {
                     return;
@@ -201,9 +241,15 @@ namespace talk
                 {
                     ChooseEngine();
                 }
+                else if (chosen == 9)
+                {
+                    // Enter on the language row is the old group menu, which is
+                    // still the quick way past nine of them.
+                    ChooseLanguage(cycle);
+                }
                 else if (chosen == 1)
                 {
-                    ChooseVoice(settings, engine);
+                    ChooseVoice(settings, engine, cycle);
                 }
                 else if (chosen == 2)
                 {
@@ -240,6 +286,9 @@ namespace talk
             }
         }
 
+        // Volume is the one dial that is not ten steps end to end.
+        private const int VolumeStep = 5;
+
         // Zero is worth marking as the normal setting, since a dial reading 0
         // otherwise looks like it has been turned all the way down.
         private static string Dial(int value)
@@ -271,46 +320,46 @@ namespace talk
             Notice(SpeechEngine.Current.Describe(), ConsoleColor.Green);
         }
 
-        private static void ChooseVoice(VoiceSettings settings, ISpeechEngine engine)
+        // The whole list at once, for jumping rather than walking. The language
+        // row has already said which language, so this is the voices in it -
+        // the group menu that used to come first is now a row on the screen
+        // behind this one.
+        private static void ChooseVoice(VoiceSettings settings, ISpeechEngine engine,
+            VoiceCycle cycle)
         {
-            string[] voices = engine.AvailableVoices();
-            if (voices.Length == 0)
+            if (!cycle.HasVoices())
             {
                 Notice("This synthesizer only has the one voice.", ConsoleColor.Yellow);
                 return;
             }
 
-            // A backend with more voices than fit on a screen sorts them into
-            // groups, and the group is asked for first. Picking a group is not
-            // picking a voice, so backing out of the second menu comes back to
-            // this one rather than leaving the voice half changed.
-            string[] groups = Groups(voices, engine);
-            if (groups.Length > 1)
-            {
-                while (true)
-                {
-                    List<MenuItem> groupItems = new List<MenuItem>();
-                    for (int i = 0; i < groups.Length; i++)
-                    {
-                        groupItems.Add(new MenuItem(i + 1, groups[i],
-                            Count(voices, engine, groups[i]) + " voices"));
-                    }
+            PickVoice(settings, cycle.VoicesHere,
+                cycle.HasLanguages ? cycle.LanguageName() : "VOICE");
+        }
 
-                    Console.WriteLine();
-                    int group = new Menu("VOICE", groupItems).Choose();
-                    if (group == Menu.Cancelled)
-                    {
-                        return;
-                    }
-                    if (PickVoice(settings, InGroup(voices, engine, groups[group - 1]),
-                            groups[group - 1]))
-                    {
-                        return;
-                    }
-                }
+        // Nine languages is more than is worth walking to the end of, so the
+        // row still opens to the list of them.
+        private static void ChooseLanguage(VoiceCycle cycle)
+        {
+            string[] languages = cycle.Languages;
+            List<MenuItem> items = new List<MenuItem>();
+            for (int i = 0; i < languages.Length; i++)
+            {
+                items.Add(new MenuItem(i + 1, languages[i],
+                    cycle.VoicesIn(languages[i]) + " voices"));
             }
 
-            PickVoice(settings, voices, "VOICE");
+            Console.WriteLine();
+            Menu menu = new Menu("LANGUAGE", items);
+            menu.Selected = cycle.LanguageIndex;
+            int chosen = menu.Choose();
+            if (chosen == Menu.Cancelled)
+            {
+                return;
+            }
+
+            cycle.LanguageIndex = chosen - 1;
+            Notice("Voice set to " + cycle.VoiceName() + ".", ConsoleColor.Green);
         }
 
         // True when a voice was chosen, false when the user backed out and the
@@ -366,11 +415,6 @@ namespace talk
                 }
             }
             return inGroup.ToArray();
-        }
-
-        private static int Count(string[] voices, ISpeechEngine engine, string group)
-        {
-            return InGroup(voices, engine, group).Length;
         }
 
         // Anything that is not a number leaves the setting where it was, which

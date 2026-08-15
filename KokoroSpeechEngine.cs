@@ -45,16 +45,7 @@ namespace talk
 
         private static string ModelDirectory
         {
-            get
-            {
-                string data = Environment.GetFolderPath(
-                    Environment.SpecialFolder.LocalApplicationData);
-                if (string.IsNullOrEmpty(data))
-                {
-                    data = AppContext.BaseDirectory;
-                }
-                return Path.Combine(data, "talk-bot");
-            }
+            get { return UserData.Folder; }
         }
 
         private static string ModelPath

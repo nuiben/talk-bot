@@ -16,7 +16,7 @@ namespace talk
             Console.WriteLine("1) Add a phrase");
             Console.WriteLine("2) Remove a phrase");
             Console.WriteLine("3) Make Talk Bot Talk");
-            Console.WriteLine("4) Run Selenium Test");
+            Console.WriteLine("4) Add Pengy's story as a phrase");
             Console.WriteLine("5) Exit");
             Console.WriteLine("______________________");
             Console.WriteLine("Make a selection (1-5)");
@@ -30,6 +30,14 @@ namespace talk
             phraseID = phraseID + 1;
             Phrase toBeAdded = new Phrase(phraseID, phraseName);
             return toBeAdded;
+        }
+
+        // The story arrives from the web rather than the keyboard, but it takes
+        // the next ID in the same sequence as a typed phrase.
+        public Phrase StoryPhrase(string story)
+        {
+            phraseID = phraseID + 1;
+            return new Phrase(phraseID, story);
         }
 
         public int DeletePhrase()

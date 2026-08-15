@@ -8,22 +8,40 @@ namespace talk
 {
     class ConsoleView
     {
-        public const int Exit = 7;
+        public const int Exit = 6;
+
+        // Not on the menu: the mascot's story is fetched by spelling out his
+        // name, at the menu or at the prompt, rather than by taking up a row
+        // for a page most people only ever read once. The number is far enough
+        // from the rows that it can never collide with one.
+        public const int Pengy = 42;
+
+        private const string PengyWord = "pengy";
 
         int phraseID = 0;
 
         // Built once rather than per pass, so the highlight stays on the entry
         // the user last ran instead of jumping back to the top each time.
-        private readonly Menu mainMenu = new Menu("TALK BOT", new List<MenuItem>
+        private readonly Menu mainMenu = MainMenu();
+
+        // The rows and the word that is not one, in one place so a test can
+        // ask the real menu what it answers to rather than keeping a copy of
+        // it that could drift.
+        internal static Menu MainMenu()
         {
-            new MenuItem(1, "Add a phrase", "Type something for Talk Bot to say"),
-            new MenuItem(2, "Remove a phrase", "Take a phrase back out of the list"),
-            new MenuItem(3, "Make Talk Bot talk", "Read one of the saved phrases aloud"),
-            new MenuItem(4, "Add Pengy's story as a phrase", "Fetch pengy.md from GitHub"),
-            new MenuItem(5, "Read a web page out loud", "Paste a URL and hear the page"),
-            new MenuItem(6, "Voice settings", "Pick a voice and set speed, pitch and volume"),
-            new MenuItem(Exit, "Exit", "Close Talk Bot")
-        });
+            Menu menu = new Menu("TALK BOT", new List<MenuItem>
+            {
+                new MenuItem(1, "Add a phrase", "Type something for Talk Bot to say"),
+                new MenuItem(2, "Remove a phrase", "Take a phrase back out of the list"),
+                new MenuItem(3, "Make Talk Bot talk", "Read one of the saved phrases aloud"),
+                new MenuItem(4, "Read a web page out loud", "Paste a URL and hear the page"),
+                new MenuItem(5, "Voice settings",
+                    "Pick a voice and set speed, pitch and volume"),
+                new MenuItem(Exit, "Exit", "Close Talk Bot")
+            });
+            menu.AddSecret(PengyWord, Pengy);
+            return menu;
+        }
 
         // Escape means the same thing as picking Exit, so the key that backs
         // out of every other menu also backs out of this one.

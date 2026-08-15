@@ -77,15 +77,20 @@ namespace talk
                 }
                 else if (userSelection == 4)
                 {
-                    AddFromWeb(view, model, PengyStory.PageUrl, false);
+                    AddFromWeb(view, model, view.AskForUrl(), true);
                 }
                 else if (userSelection == 5)
                 {
-                    AddFromWeb(view, model, view.AskForUrl(), true);
-                }
-                else if (userSelection == 6)
-                {
                     view.ConfigureVoice();
+                }
+                else if (userSelection == ConsoleView.Pengy)
+                {
+                    // Spelling out the mascot's name at the menu saves his
+                    // story as a phrase. It is not read straight away: the
+                    // point is that it turns up in the list, for whoever went
+                    // looking to find.
+                    ConsoleView.Notice("Pengy waddles in.", ConsoleColor.Cyan);
+                    AddFromWeb(view, model, PengyStory.PageUrl, false);
                 }
             }
             while (userSelection != ConsoleView.Exit);

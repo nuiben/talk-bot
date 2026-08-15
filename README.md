@@ -1,4 +1,22 @@
 # talk-bot
+```
+ _______________________________
+< Fish sticks first. Then talk. >
+ -------------------------------
+       \   .--.
+        \ |o_o |
+          |:_/ |
+         //   \ \
+        (|     | )
+       /'\_   _/`\
+       \___)=(___/
+```
+Pengy, unofficial mascot of Talk Bot. He lives in the freezer aisle of a
+supermarket, which is not where penguins are supposed to live, and nobody has
+worked up the nerve to tell him. His side of it is in [pengy.md](pengy.md).
+His story used to have a row on the menu; it no longer does, but the bot will
+still fetch and save it for anyone who thinks to ask him by name.
+
 ## Overview
 CLI application developed in C# that uses Speech Synthesis to convert text inputs into spoken words, offering a straightforward and efficient way to implement text-to-speech functionality.
 

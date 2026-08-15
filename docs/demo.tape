@@ -18,8 +18,9 @@ Type "dotnet run --no-build -- --noqa"
 Enter
 Sleep 5s
 
-# Walk the menu so the highlighted row opens to explain itself.
-Down@600ms 5
+# Walk the menu so the highlighted row opens to explain itself, down to the
+# voice settings, which is the second row from the bottom.
+Down@600ms 4
 Sleep 1s
 Enter
 Sleep 2s
@@ -66,7 +67,7 @@ Sleep 1s
 # Back to the main menu, then read a page out loud.
 Escape
 Sleep 1500ms
-Type "5"
+Type "4"
 Sleep 500ms
 Enter
 Sleep 1s
@@ -80,10 +81,20 @@ Sleep 45s
 Show
 Sleep 8s
 
-# Any key stops the reading, then escape closes Talk Bot. Space would do the
-# stopping too, but the menu reads it as select, so it would start the page
-# over rather than end the demo.
+# Any key stops the reading. Space would do the stopping too, but the menu
+# reads it as select, so it would start the page over.
 Right
-Sleep 2s
+Sleep 3s
+
+# The mascot's story has no row on the menu any more. Spelling out his name at
+# the menu still saves it, and nothing is echoed while it is being typed, so
+# the reveal is the line that turns up afterwards.
+Type@200ms "pengy"
+Hide
+Sleep 40s
+Show
+Sleep 5s
+
+# Escape closes Talk Bot.
 Escape
 Sleep 3s

@@ -55,12 +55,46 @@ namespace talk
         private readonly string title;
         private readonly List<MenuItem> items;
 
+        // Words that are not on the menu and return a value of their own when
+        // they are typed. Nothing about them is drawn, which is the point.
+        private readonly Dictionary<string, int> secrets =
+            new Dictionary<string, int>();
+
+        // What has been typed since the last key that was not a letter, so a
+        // word can be spelled out at a menu that is otherwise driven by arrows.
+        private string spelled = "";
+
         private int selected;
 
         public Menu(string newTitle, List<MenuItem> newItems)
         {
             title = newTitle;
             items = newItems;
+        }
+
+        // A word that works at this menu without appearing on it. It is matched
+        // whichever way the menu is being driven: spelled out a letter at a
+        // time against the arrow keys, or typed as the whole answer when the
+        // console is redirected.
+        public void AddSecret(string word, int value)
+        {
+            secrets[word.ToLowerInvariant()] = value;
+        }
+
+        // The value a word is worth, or Cancelled when it is not a secret. The
+        // end of what was typed is what counts, so a mistyped letter can be
+        // followed by the word itself rather than having to be undone.
+        internal int Secret(string typed)
+        {
+            string lower = typed == null ? "" : typed.ToLowerInvariant().Trim();
+            foreach (KeyValuePair<string, int> secret in secrets)
+            {
+                if (lower.EndsWith(secret.Key, StringComparison.Ordinal))
+                {
+                    return secret.Value;
+                }
+            }
+            return Cancelled;
         }
 
         // The row that was highlighted last time, so reopening a menu puts the
@@ -128,6 +162,26 @@ namespace talk
                     if (index < items.Count)
                     {
                         selected = index;
+                    }
+                }
+                else if (char.IsLetter(key.KeyChar))
+                {
+                    // Letters otherwise do nothing here, so they are collected
+                    // in case they are spelling out a word the menu does not
+                    // show. j, k and q have already been dealt with above,
+                    // which is why no secret may contain one.
+                    spelled = spelled + char.ToLowerInvariant(key.KeyChar);
+                    if (spelled.Length > 32)
+                    {
+                        // Only the tail can ever match, so the rest is dropped
+                        // rather than kept for a menu that stays open all day.
+                        spelled = spelled.Substring(spelled.Length - 32);
+                    }
+                    int secret = Secret(spelled);
+                    if (secret != Cancelled)
+                    {
+                        spelled = "";
+                        return secret;
                     }
                 }
             }
@@ -253,6 +307,14 @@ namespace talk
                 if (entered == null)
                 {
                     return Cancelled;
+                }
+
+                // A word that is not on the menu is checked before the numbers
+                // are, since none of the numbers can spell one.
+                int secret = Secret(entered);
+                if (secret != Cancelled)
+                {
+                    return secret;
                 }
 
                 int value;

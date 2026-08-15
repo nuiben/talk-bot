@@ -23,9 +23,16 @@ namespace talk
             phrases.Add(p);
         }
 
-        public void RemovePhrase(int phraseID)
+        // False when there is no phrase with that ID, so the view can say so
+        // instead of the caller assuming it worked.
+        public bool RemovePhrase(int phraseID)
         {
-            phrases.Remove(phrases.Find(words => words.GetId() == phraseID));
+            Phrase toBeRemoved = phrases.Find(words => words.GetId() == phraseID);
+            if (toBeRemoved == null)
+            {
+                return false;
+            }
+            return phrases.Remove(toBeRemoved);
         }
 
         public Phrase[] ListPhrases()
@@ -33,12 +40,17 @@ namespace talk
             return phrases.ToArray();
         }
 
-        // TODO: Check input validation for phrase to be played.
-        public void PlayPhrase(int phraseID)
+        // An ID that is not in the list used to end the program, which is easy
+        // to hit from the menu, so a miss is reported instead.
+        public bool PlayPhrase(int phraseID)
         {
             Phrase toBePlayed = phrases.Find(x => x.GetId() == phraseID);
-            
+            if (toBePlayed == null)
+            {
+                return false;
+            }
             toBePlayed.Play();
+            return true;
         }
     }
 }

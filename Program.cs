@@ -13,11 +13,28 @@ namespace talk
         // MVC Menu Screen
         static int Main(string[] args)
         {
-            // The tests are no longer on the menu, so they run from the command
-            // line instead and hand their result back as the exit code.
-            if (args.Length > 0 && args[0] == "--test")
+            // --test runs the suite and nothing else, for a build or a CI job
+            // that only wants the exit code.
+            if (HasFlag(args, "--test"))
             {
                 return TestSuite.Run();
+            }
+
+            // Otherwise QA runs on the way to the menu, so a fresh build is
+            // checked without anyone having to remember to check it. The tests
+            // drive a real browser against real pages, so they take a minute
+            // and need the network; --noqa skips them when neither is worth it.
+            if (!HasFlag(args, "--noqa"))
+            {
+                ConsoleView.Notice("Running QA - pass --noqa to skip.", ConsoleColor.DarkGray);
+                if (TestSuite.Run() != 0)
+                {
+                    // A failing page check says nothing about whether the menu
+                    // works, so it is reported and stepped past rather than
+                    // keeping the user out of the program.
+                    ConsoleView.Notice("QA reported problems. Carrying on to the menu.",
+                        ConsoleColor.Yellow);
+                }
             }
 
             ConsoleView view = new ConsoleView();
@@ -32,32 +49,84 @@ namespace talk
                 }
                 else if (userSelection == 2)
                 {
-                    model.RemovePhrase(view.DeletePhrase());
+                    // Cancelled means the user backed out of the picker, which
+                    // is not a failure worth reporting.
+                    int chosen = view.ChoosePhrase("REMOVE", model.ListPhrases());
+                    if (chosen != Menu.Cancelled && model.RemovePhrase(chosen))
+                    {
+                        ConsoleView.Notice("Removed.", ConsoleColor.Green);
+                    }
                 }
                 else if (userSelection == 3)
                 {
-                    view.DisplayPhrases(model.ListPhrases());
-                    model.PlayPhrase(view.PlayPhrase());
+                    int chosen = view.ChoosePhrase("SPEAK", model.ListPhrases());
+                    if (chosen != Menu.Cancelled)
+                    {
+                        model.PlayPhrase(chosen);
+                    }
                 }
                 else if (userSelection == 4)
                 {
-                    // A browser or network problem should return to the menu,
-                    // not take down the program.
-                    try
-                    {
-                        model.AddPhrase(view.StoryPhrase(PengyStory.Fetch()));
-                        Console.WriteLine("Added \"" + PengyStory.Title +
-                            "\" to the phrase list.");
-                    }
-                    catch (WebDriverException e)
-                    {
-                        Console.WriteLine("Pengy's story could not be fetched: " + e.Message);
-                    }
+                    AddFromWeb(view, model, PengyStory.PageUrl, false);
+                }
+                else if (userSelection == 5)
+                {
+                    AddFromWeb(view, model, view.AskForUrl(), true);
+                }
+                else if (userSelection == 6)
+                {
+                    view.ConfigureVoice();
                 }
             }
-            while (userSelection != 5);
+            while (userSelection != ConsoleView.Exit);
 
             return 0;
+        }
+
+        // Flags are looked for anywhere in the arguments rather than only in
+        // first position, so "--noqa --test" and "--test --noqa" behave alike.
+        private static bool HasFlag(string[] args, string flag)
+        {
+            foreach (string arg in args)
+            {
+                if (string.Equals(arg, flag, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Saves a page as a phrase, and reads it straight away when the user
+        // asked for the page by name. The text is put on the screen first, so
+        // the user can see what came off the page while it is being read, and
+        // still has it there once the speech has finished or been stopped. A
+        // browser, network or content problem should return to the menu, not
+        // take down the program.
+        private static void AddFromWeb(ConsoleView view, PhraseLibrary model, string url,
+            bool speakNow)
+        {
+            try
+            {
+                Phrase phrase = view.FetchedPhrase(WebPage.Read(url));
+                model.AddPhrase(phrase);
+                ConsoleView.Notice("Saved " + phrase.GetPhrase().Length +
+                    " characters as phrase " + phrase.GetId() + ".", ConsoleColor.Green);
+                if (speakNow)
+                {
+                    view.ShowText(url, phrase.GetPhrase());
+                    phrase.Play();
+                }
+            }
+            catch (PageNotReadableException e)
+            {
+                ConsoleView.Notice("Nothing to read: " + e.Message, ConsoleColor.Yellow);
+            }
+            catch (WebDriverException e)
+            {
+                ConsoleView.Notice("That page could not be opened: " + e.Message,
+                    ConsoleColor.Red);
+            }
         }
     }
 }

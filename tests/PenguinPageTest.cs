@@ -18,12 +18,7 @@ namespace talk.Tests
 
         public bool Run()
         {
-            string text;
-            using (GitHubPage page = new GitHubPage())
-            {
-                page.Open(PageUrl);
-                text = page.ReadText();
-            }
+            string text = WebPage.Read(PageUrl);
 
             if (text.Contains(ExpectedText))
             {

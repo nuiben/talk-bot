@@ -15,6 +15,7 @@ namespace talk.Tests
             List<ITest> tests = new List<ITest>();
             tests.Add(new PenguinPageTest());
             tests.Add(new PengyStoryTest());
+            tests.Add(new WebPageTest());
 
             bool allPassed = true;
             foreach (ITest test in tests)
@@ -31,17 +32,23 @@ namespace talk.Tests
                         ConsoleColor.Red);
                     allPassed = false;
                 }
+                catch (PageNotReadableException e)
+                {
+                    Report("ERROR", test.Name + " could not run: " + e.Message,
+                        ConsoleColor.Red);
+                    allPassed = false;
+                }
             }
             return allPassed ? 0 : 1;
         }
 
         // Firefox still writes a couple of its own lines to this console on
-        // startup and shutdown, so each result gets a banner, colour and blank
+        // startup and shutdown, so each result gets a banner, color and blank
         // lines around it to stay readable next to them.
-        public static void Report(string outcome, string detail, ConsoleColor colour)
+        public static void Report(string outcome, string detail, ConsoleColor color)
         {
             ConsoleColor previous = Console.ForegroundColor;
-            Console.ForegroundColor = colour;
+            Console.ForegroundColor = color;
             Console.WriteLine();
             Console.WriteLine("#============== TEST ==============#");
             Console.WriteLine("   " + outcome + ": " + detail);

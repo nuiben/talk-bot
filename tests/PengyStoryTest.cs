@@ -11,10 +11,9 @@ namespace talk.Tests
         {
             PengyStory.Title,
             "Pengy is a penguin who lives in the freezer aisle",
-            "Pengy had not rehearsed the part where the floor was freshly waxed.",
-            "a cardboard cutout of a man recommending yogurt",
+            "The night manager found him at 2 a.m.",
             "Pengy looked him straight in the eye and burped.",
-            "And that is why, to this day, Pengy insists the floor started it."
+            "And that is why, to this day, Pengy continues to live in the freezer isle."
         };
 
         public string Name

@@ -6,3 +6,6 @@ packages/
 .idea/
 
 *.user
+
+.mcp.json
+.claude

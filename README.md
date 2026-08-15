@@ -32,6 +32,12 @@ synthesizer is speaking; each backend converts them to its own units. Preview
 reads a sample line so a setting can be heard rather than guessed at, and Reset
 puts everything back.
 
+Menus longer than about six rows are walked a window at a time, with a count of
+how many rows are above and below it. A menu redraws in place by winding the
+cursor back over what it wrote, which only works while all of it is still on
+the screen, so a list as long as the voice one used to scroll its own top away
+and leave a trail of half-erased menus behind it.
+
 The voice list comes from the synthesizer itself: installed voices on Windows,
 `say -v ?` on macOS, the English voices and variants on espeak, and the voice
 types on speech-dispatcher. Backends that cannot do a dial say so on the

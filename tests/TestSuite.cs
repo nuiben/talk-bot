@@ -29,6 +29,8 @@ namespace talk.Tests
             tests.Add(new ConsoleInputTest());
             tests.Add(new TextDisplayTest());
             tests.Add(new SecretWordTest());
+            tests.Add(new MenuWindowTest());
+            tests.Add(new QuietTest());
             if (includePageTests)
             {
                 tests.Add(new PenguinPageTest());

@@ -161,12 +161,17 @@ namespace talk
         public void ConfigureVoice()
         {
             VoiceSettings settings = VoiceSettings.Current;
-            ISpeechEngine engine = SpeechEngine.Current;
-            Notice(engine.Describe(), ConsoleColor.DarkGray);
+            Notice(SpeechEngine.Current.Describe(), ConsoleColor.DarkGray);
 
             while (true)
             {
+                // Read every pass rather than once, because the engine row can
+                // change which backend this screen is now setting up.
+                ISpeechEngine engine = SpeechEngine.Current;
+
                 List<MenuItem> items = new List<MenuItem>();
+                items.Add(new MenuItem(8, "Engine: " + SpeechEngine.Selected,
+                    "The system synthesizer, or Kokoro's neural voices"));
                 items.Add(new MenuItem(1, "Voice: " + settings.VoiceName,
                     "Pick from the voices this synthesizer has"));
                 items.Add(new MenuItem(2, "Speed: " + Dial(settings.Speed),
@@ -186,7 +191,11 @@ namespace talk
                     return;
                 }
 
-                if (chosen == 1)
+                if (chosen == 8)
+                {
+                    ChooseEngine();
+                }
+                else if (chosen == 1)
                 {
                     ChooseVoice(settings, engine);
                 }
@@ -224,6 +233,30 @@ namespace talk
             return value == 0 ? "0 (normal)" : value.ToString();
         }
 
+        // Which synthesizer speaks. Kokoro has a model to fetch before it can
+        // say anything, so the row says as much while it is still only being
+        // looked at rather than springing a 320MB download on the first phrase.
+        private static void ChooseEngine()
+        {
+            List<MenuItem> items = new List<MenuItem>();
+            items.Add(new MenuItem(1, SpeechEngine.System,
+                "Whatever this machine already has installed"));
+            items.Add(new MenuItem(2, SpeechEngine.Kokoro,
+                KokoroSpeechEngine.ModelDownloaded()
+                    ? "Neural voices, 157 of them, in nine languages"
+                    : "Neural voices - downloads about 320MB on the first phrase"));
+
+            Console.WriteLine();
+            int chosen = new Menu("ENGINE", items).Choose();
+            if (chosen == Menu.Cancelled)
+            {
+                return;
+            }
+
+            SpeechEngine.Select(chosen == 2 ? SpeechEngine.Kokoro : SpeechEngine.System);
+            Notice(SpeechEngine.Current.Describe(), ConsoleColor.Green);
+        }
+
         private static void ChooseVoice(VoiceSettings settings, ISpeechEngine engine)
         {
             string[] voices = engine.AvailableVoices();
@@ -233,6 +266,43 @@ namespace talk
                 return;
             }
 
+            // A backend with more voices than fit on a screen sorts them into
+            // groups, and the group is asked for first. Picking a group is not
+            // picking a voice, so backing out of the second menu comes back to
+            // this one rather than leaving the voice half changed.
+            string[] groups = Groups(voices, engine);
+            if (groups.Length > 1)
+            {
+                while (true)
+                {
+                    List<MenuItem> groupItems = new List<MenuItem>();
+                    for (int i = 0; i < groups.Length; i++)
+                    {
+                        groupItems.Add(new MenuItem(i + 1, groups[i],
+                            Count(voices, engine, groups[i]) + " voices"));
+                    }
+
+                    Console.WriteLine();
+                    int group = new Menu("VOICE", groupItems).Choose();
+                    if (group == Menu.Cancelled)
+                    {
+                        return;
+                    }
+                    if (PickVoice(settings, InGroup(voices, engine, groups[group - 1]),
+                            groups[group - 1]))
+                    {
+                        return;
+                    }
+                }
+            }
+
+            PickVoice(settings, voices, "VOICE");
+        }
+
+        // True when a voice was chosen, false when the user backed out and the
+        // menu above should be offered again.
+        private static bool PickVoice(VoiceSettings settings, string[] voices, string title)
+        {
             // Value 0 is the default rather than a voice, so the user can get
             // back to it without knowing what it is called.
             List<MenuItem> items = new List<MenuItem>();
@@ -243,14 +313,50 @@ namespace talk
             }
 
             Console.WriteLine();
-            int chosen = new Menu("VOICE", items).Choose();
+            int chosen = new Menu(title.ToUpperInvariant(), items).Choose();
             if (chosen == Menu.Cancelled)
             {
-                return;
+                return false;
             }
 
             settings.Voice = chosen == 0 ? null : voices[chosen - 1];
             Notice("Voice set to " + settings.VoiceName + ".", ConsoleColor.Green);
+            return true;
+        }
+
+        // The group labels in the order their voices first appear, so the
+        // backend's own ordering decides which language is at the top rather
+        // than the alphabet.
+        internal static string[] Groups(string[] voices, ISpeechEngine engine)
+        {
+            List<string> groups = new List<string>();
+            foreach (string voice in voices)
+            {
+                string group = engine.VoiceGroup(voice);
+                if (group != null && !groups.Contains(group))
+                {
+                    groups.Add(group);
+                }
+            }
+            return groups.ToArray();
+        }
+
+        internal static string[] InGroup(string[] voices, ISpeechEngine engine, string group)
+        {
+            List<string> inGroup = new List<string>();
+            foreach (string voice in voices)
+            {
+                if (engine.VoiceGroup(voice) == group)
+                {
+                    inGroup.Add(voice);
+                }
+            }
+            return inGroup.ToArray();
+        }
+
+        private static int Count(string[] voices, ISpeechEngine engine, string group)
+        {
+            return InGroup(voices, engine, group).Length;
         }
 
         // Anything that is not a number leaves the setting where it was, which

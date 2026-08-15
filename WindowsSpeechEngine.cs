@@ -88,6 +88,12 @@ namespace talk
             return voices.ToArray();
         }
 
+        // The installed voices are a short list, so they are shown as one.
+        public string VoiceGroup(string voice)
+        {
+            return null;
+        }
+
         public string Describe()
         {
             return "Windows speech - voice, speed, pitch and volume";

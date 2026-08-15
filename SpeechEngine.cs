@@ -25,6 +25,12 @@ namespace talk
         // an empty list.
         string[] AvailableVoices();
 
+        // Which list a voice belongs on, or null when the backend's voices are
+        // few enough to be shown as one. Kokoro ships a hundred and fifty of
+        // them, which is more than a menu can hold, so it groups them by
+        // language and the settings screen asks for the group first.
+        string VoiceGroup(string voice);
+
         // One line for the settings screen: which backend is speaking and
         // which of the dials it actually honours.
         string Describe();
@@ -73,12 +79,56 @@ namespace talk
 
     static class SpeechEngine
     {
+        // The synthesizer that came with the machine, and the one that has to
+        // be downloaded. Kokoro sounds better and starts slower, so which one
+        // is speaking is the user's choice rather than ours.
+        public const string System = "system";
+        public const string Kokoro = "kokoro";
+
+        public static string[] Backends
+        {
+            get { return new string[] { System, Kokoro }; }
+        }
+
+        private static string selected = System;
+
+        public static string Selected
+        {
+            get { return selected; }
+        }
+
+        // Each backend is built once and kept, so going back to one that has
+        // already spoken does not load its model again.
         private static ISpeechEngine instance;
+        private static ISpeechEngine kokoro;
+
+        // A voice name means nothing to a backend that does not have it:
+        // "af_heart" is not an espeak voice and "en+f3" is not a Kokoro one, so
+        // switching backends drops the voice back to the default rather than
+        // handing the new one a name it will quietly fail to find.
+        public static void Select(string backend)
+        {
+            string wanted = backend == Kokoro ? Kokoro : System;
+            if (wanted == selected)
+            {
+                return;
+            }
+            selected = wanted;
+            VoiceSettings.Current.Voice = null;
+        }
 
         public static ISpeechEngine Current
         {
             get
             {
+                if (selected == Kokoro)
+                {
+                    if (kokoro == null)
+                    {
+                        kokoro = new KokoroSpeechEngine();
+                    }
+                    return kokoro;
+                }
                 if (instance == null)
                 {
                     instance = Create();
@@ -340,6 +390,12 @@ namespace talk
             return EspeakVoices();
         }
 
+        // None of these offer enough voices to be worth splitting into groups.
+        public string VoiceGroup(string voice)
+        {
+            return null;
+        }
+
         // "say -v ?" lists a voice, its language and a sample line, separated
         // by runs of spaces. Voice names contain spaces of their own ("Bad
         // News"), so the name is everything before the first double space.
@@ -437,6 +493,11 @@ namespace talk
         public string[] AvailableVoices()
         {
             return new string[0];
+        }
+
+        public string VoiceGroup(string voice)
+        {
+            return null;
         }
 
         public string Describe()

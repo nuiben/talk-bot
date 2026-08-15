@@ -366,6 +366,10 @@ namespace talk
 
             try
             {
+                // Before the model, because the synthesizer builds its player
+                // as it is constructed and reads the hook only then.
+                KokoroAudioPlayer.Install();
+
                 if (!ModelDownloaded())
                 {
                     Console.WriteLine("Fetching the Kokoro model (about 320MB). This happens once.");

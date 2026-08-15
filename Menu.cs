@@ -36,19 +36,41 @@ namespace talk
     }
 
     // A list the user walks with the arrow keys rather than typing a number.
-    // The highlighted row opens to show its detail line, accordion style, and
-    // closes again when the highlight moves on, so the screen only ever
-    // explains the one choice the user is looking at.
+    // The screen only ever explains the one choice the user is looking at: the
+    // highlighted row's detail is written to a slot kept below the list.
+    //
+    // The frame is the same height on every draw, which is what makes it read
+    // as a pane with a highlight moving inside it rather than a list that
+    // reflows under the cursor. The detail used to open and close between the
+    // rows, accordion style, which pushed every row below it down a line on
+    // every keystroke, and the two "more above/below" lines came and went at
+    // the ends of a long list, which moved the footer as well. The detail now
+    // has a line of its own whether or not the row has anything to say, and
+    // the scroll marks live in the two columns to the left of the rows, so
+    // neither costs a line that is sometimes there and sometimes not.
     //
     // Redrawing works by counting the lines written and winding the cursor back
     // over them, so the menu updates in place instead of scrolling a fresh copy
-    // down the terminal on every keystroke.
+    // down the terminal on every keystroke. Because the height is fixed and
+    // every line is padded to the full width, a redraw overwrites the frame
+    // where it stands: blanking it first would show through as a flicker.
     internal class Menu
     {
         // Returned when the user presses escape rather than choosing.
         public const int Cancelled = -1;
 
         private const int Width = 46;
+
+        // The first two columns carry the scroll marks, so a row is drawn into
+        // what is left of the line.
+        private const int Gutter = 2;
+
+        private const int RowWidth = Width - Gutter;
+
+        // Lines the frame writes besides the rows themselves: the title rule,
+        // the blank under the list, the detail slot, the bottom rule and the
+        // key hints. Fixed, so the whole frame is.
+        private const int Furniture = 5;
 
         // How many rows are shown for a list of this length. A list one row too
         // long is shown whole rather than scrolled for the sake of that row:
@@ -141,11 +163,33 @@ namespace talk
                 return ChooseByTyping();
             }
 
+            // The cursor has nothing to say while a menu is up - there is
+            // nothing to type at - and left visible it sits blinking under the
+            // frame, competing with the highlight for the eye. It is put back
+            // however this returns, including by way of an exception, since a
+            // terminal left without a cursor is worse than the flicker.
+            Console.CursorVisible = false;
+            try
+            {
+                return Walk();
+            }
+            finally
+            {
+                Console.CursorVisible = true;
+            }
+        }
+
+        private int Walk()
+        {
+            // The height of the frame as it currently stands on the screen, and
+            // so how far the next draw has to wind back to land on it. Zero
+            // until the first draw, which has nothing to wind back over.
+            int height = 0;
+
             while (true)
             {
-                int lines = Draw();
+                height = Draw(height);
                 ConsoleKeyInfo key = Console.ReadKey(true);
-                Erase(lines);
 
                 if (key.Key == ConsoleKey.UpArrow || key.KeyChar == 'k')
                 {
@@ -167,11 +211,16 @@ namespace talk
                 }
                 else if (key.Key == ConsoleKey.Enter || key.Key == ConsoleKey.Spacebar)
                 {
+                    // The frame is only taken off the screen on the way out.
+                    // Moving the highlight leaves it where it is and draws
+                    // over it.
+                    Erase(height);
                     Echo(items[selected]);
                     return items[selected].Value;
                 }
                 else if (key.Key == ConsoleKey.Escape || key.KeyChar == 'q')
                 {
+                    Erase(height);
                     return Cancelled;
                 }
                 else if (key.KeyChar >= '1' && key.KeyChar <= '9')
@@ -202,60 +251,77 @@ namespace talk
                     if (secret != Cancelled)
                     {
                         spelled = "";
+                        Erase(height);
                         return secret;
                     }
                 }
             }
         }
 
-        // Returns the number of lines written, which is what Erase winds back.
-        private int Draw()
+        // Draws the frame over the one already on the screen, winding the
+        // cursor back over the given number of lines to find it, and returns
+        // the number of lines written so the next draw can do the same.
+        private int Draw(int rewind)
         {
-            int lines = 0;
-            Line(Rule(title), Accent);
-            lines++;
+            if (rewind > 0)
+            {
+                Console.SetCursorPosition(0, Math.Max(0, Console.CursorTop - rewind));
+            }
 
             int shown = Shown(items.Count);
             first = FirstVisible(selected, first, items.Count, shown);
+            int below = items.Count - (first + shown);
 
-            // How many rows are out of sight is worth saying, since a list
-            // that just stops looks like the whole of it.
-            if (first > 0)
-            {
-                Line("    ^ " + first + " more above", ConsoleColor.DarkGray);
-                lines++;
-            }
+            Fill(Rule(title), Accent);
 
             for (int i = first; i < first + shown; i++)
             {
-                MenuItem item = items[i];
-                if (i == selected)
+                // A list that just stops looks like the whole of it, so the
+                // ends of a window that has more beyond them are marked.
+                string mark = "  ";
+                if (i == first && first > 0)
                 {
-                    Highlight("  > " + Fit(item.Label, Width - 4));
-                    lines++;
-                    if (item.Detail.Length > 0)
-                    {
-                        Line("      " + Fit(item.Detail, Width - 6), ConsoleColor.DarkGray);
-                        lines++;
-                    }
+                    mark = "^ ";
                 }
-                else
+                else if (i == first + shown - 1 && below > 0)
                 {
-                    Line("    " + Fit(item.Label, Width - 4), ConsoleColor.Gray);
-                    lines++;
+                    mark = "v ";
                 }
+                Row(items[i], i == selected, mark);
             }
 
-            int below = items.Count - (first + shown);
-            if (below > 0)
+            Fill("", ConsoleColor.Gray);
+            Fill("    " + Fit(items[selected].Detail, Width - 4), ConsoleColor.DarkGray);
+
+            // Which row of how many, for a list too long to show at once. A
+            // short list is all on the screen and can be counted by eye.
+            Fill(Rule(items.Count > shown
+                ? (selected + 1) + " of " + items.Count
+                : ""), Accent);
+            Fill("  up/down move    enter select    esc back", ConsoleColor.DarkGray);
+            return shown + Furniture;
+        }
+
+        // One row, and the two columns of gutter to its left that carry the
+        // scroll marks.
+        private static void Row(MenuItem item, bool highlighted, string mark)
+        {
+            ConsoleColor previous = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.Write(mark);
+            Console.ForegroundColor = previous;
+
+            if (highlighted)
             {
-                Line("    v " + below + " more below", ConsoleColor.DarkGray);
-                lines++;
+                Highlight("> " + Fit(item.Label, RowWidth - 2));
             }
-
-            Line(Rule(""), Accent);
-            Line("  up/down move    enter select    esc back", ConsoleColor.DarkGray);
-            return lines + 2;
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.Write(("  " + Fit(item.Label, RowWidth - 2)).PadRight(RowWidth));
+                Console.ForegroundColor = previous;
+                Console.WriteLine();
+            }
         }
 
         // Which row the window starts at. The window only moves when the
@@ -306,6 +372,17 @@ namespace talk
             Console.SetCursorPosition(0, top);
         }
 
+        // A line of the frame, padded to the full width so that drawing it
+        // covers whatever the last draw left on that line. Nothing inside the
+        // frame is written any other way, which is what lets a redraw skip
+        // blanking the screen first.
+        // Callers cut their own text to length with Fit, which trims, so the
+        // indent has to be put on afterwards and cannot be cut here.
+        private static void Fill(string text, ConsoleColor color)
+        {
+            Line(text.PadRight(Width), color);
+        }
+
         private static void Line(string text, ConsoleColor color)
         {
             ConsoleColor previous = Console.ForegroundColor;
@@ -330,7 +407,7 @@ namespace talk
             ConsoleColor previousBack = Console.BackgroundColor;
             Console.ForegroundColor = ConsoleColor.Black;
             Console.BackgroundColor = ConsoleColor.DarkCyan;
-            Console.Write(Fit(text, Width).PadRight(Width));
+            Console.Write(Fit(text, RowWidth).PadRight(RowWidth));
             Console.ForegroundColor = previousFore;
             Console.BackgroundColor = previousBack;
             Console.WriteLine();

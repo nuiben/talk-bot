@@ -33,8 +33,8 @@ namespace talk
             {
                 new MenuItem(1, "Add a phrase", "Type something for Talk Bot to say"),
                 new MenuItem(2, "Remove a phrase", "Take a phrase back out of the list"),
-                new MenuItem(3, "Make Talk Bot talk", "Read one of the saved phrases aloud"),
-                new MenuItem(4, "Read a web page out loud", "Paste a URL and hear the page"),
+                new MenuItem(3, "Say a phrase", "Talk-bot reads a saved phrase aloud"),
+                new MenuItem(4, "Add a web page", "Paste a URL to add to phrases"),
                 new MenuItem(5, "Voice settings",
                     "Pick a voice and set speed, pitch and volume"),
                 new MenuItem(Exit, "Exit", "Close Talk Bot")
